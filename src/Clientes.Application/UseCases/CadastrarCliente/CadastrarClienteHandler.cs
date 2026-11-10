@@ -1,4 +1,6 @@
 ﻿
+using System.Text.Json;
+using Clientes.Application.Events;
 using Clientes.Application.Interfaces;
 using Clientes.Domain.Entities;
 
@@ -7,11 +9,17 @@ namespace Clientes.Application.UseCases.CadastrarCliente;
 public sealed class CadastrarClienteHandler
 {
     private readonly IClienteRepository _clienteRepository;
+    private readonly IOutboxRepository _outboxRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CadastrarClienteHandler(
-        IClienteRepository clienteRepository)
+        IClienteRepository clienteRepository,
+        IOutboxRepository outboxRepository,
+        IUnitOfWork unitOfWork)
     {
         _clienteRepository = clienteRepository;
+        _outboxRepository = outboxRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Guid> HandleAsync(
@@ -20,17 +28,14 @@ public sealed class CadastrarClienteHandler
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        // Cria e valida a entidade de domínio.
         var cliente = new Cliente(
             command.Nome,
             command.Cpf,
             command.Email);
 
-        // Verifica se o CPF já está cadastrado.
-        bool cpfExistente =
-            await _clienteRepository.ExisteCpfAsync(
-                cliente.Cpf,
-                cancellationToken);
+        var cpfExistente = await _clienteRepository.ExisteCpfAsync(
+            cliente.Cpf,
+            cancellationToken);
 
         if (cpfExistente)
         {
@@ -38,9 +43,29 @@ public sealed class CadastrarClienteHandler
                 "Já existe um cliente cadastrado com este CPF.");
         }
 
-        // Solicita a persistência do cliente.
+        var evento = new ClienteCadastradoEvent(
+            EventId: Guid.NewGuid(),
+            ClienteId: cliente.Id,
+            Nome: cliente.Nome,
+            Cpf: cliente.Cpf,
+            Email: cliente.Email,
+            OcorridoEm: DateTime.UtcNow);
+
+        var mensagemOutbox = new OutboxMessage(
+            id: evento.EventId,
+            tipo: "ClienteCadastrado",
+            conteudo: JsonSerializer.Serialize(evento),
+            criadoEm: evento.OcorridoEm);
+
         await _clienteRepository.AdicionarAsync(
             cliente,
+            cancellationToken);
+
+        await _outboxRepository.AdicionarAsync(
+            mensagemOutbox,
+            cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
         return cliente.Id;

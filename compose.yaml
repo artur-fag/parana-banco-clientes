@@ -1,0 +1,32 @@
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: parana-banco-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+    ports:
+      - "127.0.0.1:1434:1433"
+    volumes:
+      - parana_banco_sql_data:/var/opt/mssql
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: parana-banco-rabbitmq
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD}"
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - parana_banco_rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+volumes:
+  parana_banco_sql_data:
+  parana_banco_rabbitmq_data:

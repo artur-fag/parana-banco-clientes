@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Itens de Solução/">
+    <File Path="compose.yaml" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Clientes.API/Clientes.API.csproj" />
     <Project Path="src/Clientes.Application/Clientes.Application.csproj" />

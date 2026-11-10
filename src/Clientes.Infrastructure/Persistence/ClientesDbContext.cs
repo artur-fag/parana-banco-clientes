@@ -1,4 +1,5 @@
-﻿using Clientes.Domain.Entities;
+﻿
+using Clientes.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Clientes.Infrastructure.Persistence;
@@ -12,6 +13,9 @@ public sealed class ClientesDbContext : DbContext
     }
 
     public DbSet<Cliente> Clientes => Set<Cliente>();
+
+    public DbSet<OutboxMessage> OutboxMessages =>
+        Set<OutboxMessage>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -41,6 +45,39 @@ public sealed class ClientesDbContext : DbContext
 
             entity.Property(c => c.CriadoEm)
                 .IsRequired();
+        });
+
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.ToTable("OutboxMessages");
+
+            entity.HasKey(m => m.Id);
+
+            entity.Property(m => m.Tipo)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(m => m.Conteudo)
+                .IsRequired()
+                .HasColumnType("nvarchar(max)");
+
+            entity.Property(m => m.CriadoEm)
+                .IsRequired();
+
+            entity.Property(m => m.ProcessadoEm);
+
+            entity.Property(m => m.Tentativas)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(m => m.UltimoErro)
+                .HasColumnType("nvarchar(max)");
+
+            entity.HasIndex(m => new
+            {
+                m.ProcessadoEm,
+                m.CriadoEm
+            });
         });
     }
 }
